@@ -376,15 +376,16 @@ def chat(req: ChatRequest, session: Session = Depends(get_db)):
 
     sess_id = req.session_id
     if not sess_id:
+        s = None
+    else:
+        s = session.get(ChatSession, sess_id)
+    if not s:
+        # Stale browser localStorage after DB/volume reset — create a session instead of 404
         title = (req.message[:80] + "…") if len(req.message) > 80 else req.message
         s = ChatSession(title=title)
         session.add(s)
         session.flush()
         sess_id = s.id
-    else:
-        s = session.get(ChatSession, sess_id)
-        if not s:
-            raise HTTPException(404, "session not found")
 
     session.add(
         ChatMessage(
@@ -446,14 +447,14 @@ def chat_general(req: ChatRequest, session: Session = Depends(get_db)):
 
     sess_id = req.session_id
     if not sess_id:
+        s = None
+    else:
+        s = session.get(ChatSession, sess_id)
+    if not s:
         s = ChatSession(title=req.message[:80])
         session.add(s)
         session.flush()
         sess_id = s.id
-    else:
-        s = session.get(ChatSession, sess_id)
-        if not s:
-            raise HTTPException(404, "session not found")
 
     session.add(ChatMessage(session_id=sess_id, role="user", content=req.message, request_id=request_id))
     payload = LoominResponse(

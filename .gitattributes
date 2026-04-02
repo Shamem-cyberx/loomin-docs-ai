@@ -1,1 +1,2 @@
-scripts/*.sh text eol=lf
+# WSL/Linux: CRLF in shell scripts breaks shebang (env: 'bash\r': No such file)
+*.sh text eol=lf

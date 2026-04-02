@@ -6,9 +6,9 @@
 #   bash scripts/wsl_run_all.sh
 #
 # Options (env):
-#   SKIP_BUILD=1       — docker compose up -d only (no --build)
-#   SKIP_UPLOAD=1      — do not POST Luna/Kai PDFs (use if already indexed)
-#   COMPOSE="docker compose" — override if you use v1 docker-compose
+#   SKIP_BUILD=1       â€” docker compose up -d only (no --build)
+#   SKIP_UPLOAD=1      â€” do not POST Luna/Kai PDFs (use if already indexed)
+#   COMPOSE="docker compose" â€” override if you use v1 docker-compose
 set -euo pipefail
 
 LOOMIN_ROOT="${LOOMIN_ROOT:-/mnt/e/loomin-docs}"
@@ -91,5 +91,5 @@ run_py "targeted_rag_checks.py" "$LOOMIN_ROOT/scripts/targeted_rag_checks.py" ||
 run_py "complex_rag_tests.py" "$LOOMIN_ROOT/scripts/complex_rag_tests.py" || ec=1
 
 echo ""
-echo "=== done (exit $ec) — retrieval scripts finished ==="
+echo "=== done (exit $ec) â€” retrieval scripts finished ==="
 exit "$ec"

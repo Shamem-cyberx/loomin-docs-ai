@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 # Build on a networked workstation; deploy image tarballs air-gapped on RHEL 9.
 FROM python:3.11-slim-bookworm
 

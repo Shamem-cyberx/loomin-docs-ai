@@ -2,6 +2,100 @@
 
 Production-oriented, **fully offline** document editor with local RAG (FAISS + sentence-transformers) and **Ollama** for LLM inference. Designed for a clean **RHEL 9** air-gapped host using pre-built container images and a local Ollama model bundle.
 
+![Loomin-Docs workspace: collaborative editor (left) and Assistant sidebar with RAG (right)](docs/ui-screenshot.png)
+
+*The web UI at **http://localhost/** or **http://127.0.0.1/**: document editor with **Live collaboration · connected**, API status strip, and **Assistant** tab showing **New chat**, model (**qwen2.5:0.5b** here), **RAG**, context-use bar, conversation with **Sources**, and **Ask your documents** + **Send**.*
+
+---
+
+## How to run (Docker)
+
+You need **Docker** + **Compose V2**, this repo, a **`.env`**, and **Ollama** reachable the way `.env` describes (on the **host** or in the **`bundle`** container).
+
+### 1. Clone and environment
+
+```bash
+git clone <repository-url> loomin-docs
+cd loomin-docs
+cp env.example .env
+```
+
+Edit **`.env`** for your Ollama layout:
+
+| Layout | `OLLAMA_BASE_URL` | `COMPOSE_PROFILES` in `.env` |
+|--------|-------------------|------------------------------|
+| **Ollama on the host** (Docker Desktop for Windows/Mac; recommended to skip the large Ollama image pull) | `http://host.docker.internal:11434` | Leave **`COMPOSE_PROFILES` unset** (commented out) |
+| **Ollama in Docker** (full stack in Compose; air-gap style) | `http://ollama:11434` | Set **`COMPOSE_PROFILES=bundle`** and seed **`deploy/ollama/`** |
+
+Set **`DEFAULT_OLLAMA_MODEL`** to a tag that exists (`ollama list` on the host, or manifests inside **`deploy/ollama/`**). Example: `qwen2.5:0.5b`.
+
+### 2. Build and start containers
+
+Build **backend**, **frontend**, and **collab** (and use **`bundle`** when using container Ollama).
+
+**WSL — repo on a Windows drive** (`/mnt/e/...`, `/mnt/c/...`): use **`bash scripts/compose-wsl.sh`** so Hub pulls avoid broken credential helpers and Buildx state lives under **`~/.docker-loomin-wsl`** (not on drvfs). Do **not** rely on `chmod +x` on `/mnt/e`.
+
+```bash
+cd /mnt/e/loomin-docs
+bash scripts/compose-wsl.sh build backend frontend collab
+bash scripts/compose-wsl.sh up -d
+```
+
+**Windows PowerShell** (repo on `E:\`, etc.):
+
+```powershell
+cd E:\loomin-docs
+.\scripts\compose-wsl.ps1 build backend frontend collab
+.\scripts\compose-wsl.ps1 up -d
+```
+
+If **`docker compose build`** already works on Windows without the helper:
+
+```powershell
+$env:DOCKER_BUILDKIT = "1"
+docker compose build --parallel backend frontend collab
+docker compose up -d
+```
+
+**Linux / macOS** (no WSL):
+
+```bash
+export DOCKER_BUILDKIT=1
+docker compose build --parallel backend frontend collab
+docker compose up -d
+```
+
+If you use **`COMPOSE_PROFILES=bundle`**, ensure Compose starts the **`ollama`** profile (the helper scripts pass through to `docker compose`; your `.env` should set **`COMPOSE_PROFILES=bundle`** as in `env.example`).
+
+### 3. Health check
+
+```bash
+curl -s http://127.0.0.1:8000/health && echo
+```
+
+Expect **`{"status":"ok"}`**. If **`curl -s`** looks empty, the JSON often has **no trailing newline** — append **`&& echo`** or use **`curl -v`**.
+
+### 4. Use the UI
+
+1. Open **http://localhost/** or **http://127.0.0.1/**.
+2. **Library** → upload `.pdf` / `.md` / `.txt` → wait until status is **ready**.
+3. **Assistant** → leave **RAG** on for grounded answers → ask a question → use **Sources** to open snippet previews.
+4. If the sidebar misbehaves after a DB reset, click **New chat**.
+
+### 5. After pulling code or changing UI/API
+
+Images are **baked** into containers — rebuild affected services, then **`up -d`**:
+
+```bash
+# WSL + Windows drive:
+bash scripts/compose-wsl.sh build backend frontend
+bash scripts/compose-wsl.sh up -d
+```
+
+WSL credential / Buildx issues are covered in **[WSL: “error getting credentials”](#wsl-error-getting-credentials-when-pulling-images)** below.
+
+---
+
 ## For interviewers & evaluators
 
 This repo matches **`project-assesment.md`**: a **real-time collaborative editor** (React) with an **AI sidebar**—RAG over uploaded files, chat, Summarize/Improve on selection, **Ollama** for local inference, SQLite persistence, PII masking hooks, and latency metadata. The **air-gap story** is implemented as **scripts + Compose + manifest**; heavy binaries (Docker RPMs, `docker save` tarballs) are **assembled offline** per **`deploy/bootstrap/PACKAGE_MANIFEST.md`** and are usually **not** stored in Git.
@@ -39,25 +133,11 @@ Avoids pulling the multi‑GB `ollama/ollama` image; backend talks to Ollama on 
 
 1. Install **[Ollama](https://ollama.com)** on the host and start it (`ollama serve` if not a service).
 2. Pull at least one model, e.g. `ollama pull qwen2.5:0.5b` (must match **`DEFAULT_OLLAMA_MODEL`** in `.env`).
-3. In the repo root:
-   ```bash
-   cp env.example .env
-   ```
-   Keep `OLLAMA_BASE_URL=http://host.docker.internal:11434` and **do not** set `COMPOSE_PROFILES` (the Compose **`ollama`** service stays off).
-4. Build and start:
-   ```bash
-   export DOCKER_BUILDKIT=1
-   docker compose build --parallel
-   docker compose up -d
-   ```
-5. Confirm the project is valid:
-   ```bash
-   docker compose config >/dev/null && echo "compose OK"
-   curl -s http://127.0.0.1:8000/health
-   ```
-   Expect: `{"status":"ok"}`.
+3. **`cp env.example .env`** — keep **`OLLAMA_BASE_URL=http://host.docker.internal:11434`** and **do not** set **`COMPOSE_PROFILES`** (the Compose **`ollama`** service stays off).
+4. Build and start using **[How to run (Docker)](#how-to-run-docker)** (plain **`docker compose`** on Windows PowerShell or Mac/Linux; **`bash scripts/compose-wsl.sh`** when using **WSL** with the repo on **`/mnt/e/...`**).
+5. Confirm: **`docker compose config >/dev/null && echo compose OK`** and **`curl -s http://127.0.0.1:8000/health && echo`** → **`{"status":"ok"}`**.
 
-**WSL:** If the repo is on Windows (e.g. `E:\loomin-docs`), use path `/mnt/e/loomin-docs` inside WSL. Ensure Docker Desktop **WSL integration** is enabled for your distro.
+Ensure Docker Desktop **WSL integration** is enabled if you use WSL.
 
 ### Option B — Bundled Ollama container
 
@@ -133,11 +213,11 @@ Full pipeline + log file: `./scripts/run_assessment_verification.sh` → **`asse
 
 ### Evaluator checklist (run completely & safely)
 
-1. **`cp env.example .env`** — set **`OLLAMA_BASE_URL`** and **`DEFAULT_OLLAMA_MODEL`** to match **host Ollama** (A) or **container Ollama** (B/C).
-2. Start the stack (**Option A**, **B**, or **C** above).
-3. **`curl -s http://127.0.0.1:8000/health`** → expect **`{"status":"ok"}`**.
-4. Browser: **http://localhost/** — **Library** (upload → wait for **ready**), **Assistant** (RAG on, citations), editor **Summarize** / **Improve**.
-5. Optional: **`SUBMISSION-VERIFICATION.md`** for evidence tables; **`./scripts/run_assessment_verification.sh`** → **`assessment-run.log`**.
+1. Follow **[How to run (Docker)](#how-to-run-docker)** — **`cp env.example .env`**, align **`OLLAMA_BASE_URL`** / **`DEFAULT_OLLAMA_MODEL`** / **`COMPOSE_PROFILES`** with **Option A**, **B**, or **C**.
+2. Start the stack (WSL on a Windows drive: **`bash scripts/compose-wsl.sh …`**).
+3. **`curl -s http://127.0.0.1:8000/health && echo`** → **`{"status":"ok"}`**.
+4. Browser: **http://localhost/** or **http://127.0.0.1/** — **Library** (upload → **ready**), **Assistant** (RAG, **Sources**), editor **Summarize** / **Improve** (expected layout is shown in the **screenshot at the top** of this README).
+5. Optional: **`SUBMISSION-VERIFICATION.md`**; **`./scripts/run_assessment_verification.sh`** → **`assessment-run.log`**.
 
 ### Troubleshooting (interview machines)
 
@@ -147,6 +227,62 @@ Full pipeline + log file: `./scripts/run_assessment_verification.sh` → **`asse
 | Chat **502** / Ollama errors | Host Ollama: run `ollama serve`, then `ollama list` — include the tag in **`DEFAULT_OLLAMA_MODEL`**. |
 | Linux + `host.docker.internal` | Compose sets `extra_hosts: host.docker.internal:host-gateway` on **backend**. If it still fails, set `OLLAMA_BASE_URL` to the host’s IP (e.g. `http://172.17.0.1:11434`). |
 | RAG returns nothing | Upload files in **Library** first; RAG only searches **ingested** chunks. |
+| Assistant shows **`session not found`** | The browser kept an old chat id in **localStorage** while the API database was reset (e.g. new Docker volume). Click **New chat** in the sidebar, or rebuild so you have the latest **backend** image (auto-recovers stale ids). Always run **`docker compose build backend frontend && docker compose up -d`** after pulling code changes—containers use **baked images**, not your live source tree. |
+| Build fails: **`error getting credentials`** on **`FROM python` / `node` / `nginx`** | Use **[isolated Docker config](#wsl-error-getting-credentials-when-pulling-images)** (**`./scripts/compose-wsl.sh`** or **`compose-wsl.ps1`**) so pulls skip the broken helper. |
+
+### WSL: “error getting credentials” when pulling images
+
+Docker Desktop often sets **`credsStore`** / **`credHelpers`** in **`~/.docker/config.json`**. In **WSL**, that helper frequently **fails** for anonymous Docker Hub pulls, so **`docker compose build`** dies on **`load metadata`** with:
+
+`failed to solve: error getting credentials - err: exit status 1` (empty `out:`).
+
+**Fix 1 — recommended (does not touch your home directory):** use this repo’s **minimal** `DOCKER_CONFIG` (no credential helper).
+
+On a **Windows drive in WSL** (`/mnt/e/...`):
+
+- **`chmod`** on scripts often fails (ignore it; use **`bash scripts/...`**).
+- Do **not** set `DOCKER_CONFIG` to a folder **inside `/mnt/e`** — BuildKit/Buildx writes **`buildx/activity`** there and **`chmod` fails** (`operation not permitted`). **`compose-wsl.sh`** copies the minimal config to **`~/.docker-loomin-wsl`** (Linux filesystem) and sets `DOCKER_CONFIG` there.
+
+```bash
+cd /mnt/e/loomin-docs
+bash scripts/compose-wsl.sh build backend frontend collab
+bash scripts/compose-wsl.sh up -d
+```
+
+**Optional long-term:** clone the repo under your Linux home (e.g. **`~/projects/loomin-docs`**) so the whole tree is on **ext4** and fewer drvfs quirks apply.
+
+Without the script (manual copy once):
+
+```bash
+mkdir -p ~/.docker-loomin-wsl
+cp /mnt/e/loomin-docs/scripts/wsl-docker-config/config.json ~/.docker-loomin-wsl/config.json
+export DOCKER_CONFIG="$HOME/.docker-loomin-wsl"
+cd /mnt/e/loomin-docs
+docker compose build backend frontend collab
+docker compose up -d
+```
+
+**Fix 2 — Windows PowerShell** (same isolated config). Run **in PowerShell**, not inside WSL bash (WSL cannot run `.\something.ps1` with backslashes that way):
+
+```powershell
+cd E:\loomin-docs
+.\scripts\compose-wsl.ps1 build backend frontend collab
+.\scripts\compose-wsl.ps1 up -d
+```
+
+**Fix 3 — edit WSL `~/.docker/config.json`:** run **`python3 scripts/fix_docker_wsl_credentials.py`** (backs up and strips **`credsStore`** / **`credHelpers`**), then **`docker compose build`** as usual.
+
+**Fix 4 — plain Windows** (no `DOCKER_CONFIG`): sometimes **`docker compose build`** from **PowerShell** already works because the Windows credential helper path is valid:
+
+```powershell
+cd E:\loomin-docs
+docker compose build backend frontend collab
+docker compose up -d
+```
+
+**Checklist:** Docker Desktop is **running**; **Settings → Resources → WSL integration** → your distro is **enabled**; machine has **internet** access to **registry-1.docker.io**.
+
+Use the same **`http://localhost/`** URL after **`up -d`**.
 
 ---
 

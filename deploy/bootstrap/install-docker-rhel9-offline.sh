@@ -18,7 +18,7 @@ if [[ ! -d "${RPM_DIR}" ]]; then
   exit 1
 fi
 
-echo "Installing Docker stack from ${RPM_DIR} (no remote repos)…"
+echo "Installing Docker stack from ${RPM_DIR} (no remote repos)â€¦"
 dnf install -y --disablerepo='*' "${RPM_DIR}"/*.rpm
 
 systemctl enable --now docker

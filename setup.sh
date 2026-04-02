@@ -42,7 +42,7 @@ for tar in "${ROOT}/deploy/images/"*.tar; do
 done
 shopt -u nullglob
 
-log "Starting stack…"
+log "Starting stackâ€¦"
 # Air-gap: enable bundled Ollama. Host Ollama: USE_HOST_OLLAMA=1 ./setup.sh
 if [ "${USE_HOST_OLLAMA:-0}" != "1" ]; then
   export COMPOSE_PROFILES="${COMPOSE_PROFILES:-bundle}"
@@ -51,10 +51,10 @@ fi
 
 log ""
 log "Loomin-Docs is up."
-log "  • UI:            http://localhost/"
-log "  • API:           http://localhost:8000/"
-log "  • Collaboration: ws://localhost:1234  (Hocuspocus; ensure port open in firewall)"
-log "  • Ollama:        http://localhost:11434/"
+log "  â€¢ UI:            http://localhost/"
+log "  â€¢ API:           http://localhost:8000/"
+log "  â€¢ Collaboration: ws://localhost:1234  (Hocuspocus; ensure port open in firewall)"
+log "  â€¢ Ollama:        http://localhost:11434/"
 log ""
 log "Offline Docker RPM install (optional): sudo RPM_DIR=./deploy/rpms ./deploy/bootstrap/install-docker-rhel9-offline.sh"
 log "No pip/npm/model downloads occur at runtime; only what you baked into images and deploy/ollama."

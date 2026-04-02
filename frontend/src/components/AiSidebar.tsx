@@ -3,6 +3,7 @@ import {
   chatGeneral,
   chatRag,
   fetchModels,
+  formatApiErrorMessage,
   newChatSession,
   type Citation,
   type LoominResponse,
@@ -16,6 +17,23 @@ export type ChatTurn = {
   citations?: Citation[];
   metrics?: Partial<LoominResponse>;
 };
+
+function citationLine(c: Citation, index: number): string {
+  const pretty = c.file.replace(/_/g, " ");
+  const short = pretty.length > 34 ? `${pretty.slice(0, 31)}…` : pretty;
+  const tail = c.chunk_id.includes(":") ? (c.chunk_id.split(":").pop() ?? c.chunk_id) : c.chunk_id;
+  return `${index + 1}. ${short} · #${tail}`;
+}
+
+function formatTimingLine(m: Partial<LoominResponse>): string {
+  const parts: string[] = [];
+  if (m.retrieval_time_ms != null) parts.push(`retrieve ${m.retrieval_time_ms} ms`);
+  if (m.llm_latency_ms != null) parts.push(`llm ${m.llm_latency_ms} ms`);
+  if (m.generation_speed_tps != null && m.generation_speed_tps > 0) {
+    parts.push(`${m.generation_speed_tps.toFixed(1)} tok/s`);
+  }
+  return parts.join(" · ");
+}
 
 type Tab = "assistant" | "library";
 
@@ -90,6 +108,13 @@ export function AiSidebar({
     return s.id;
   }, [sessionId]);
 
+  const startNewChat = useCallback(() => {
+    setSessionId(null);
+    localStorage.removeItem("loomin_session");
+    setMessages([]);
+    setActiveCite(null);
+  }, []);
+
   const onLibraryToast = useCallback((message: string, variant: "ok" | "err" = "ok") => {
     let m = message.trim();
     if (/413|entity too large/i.test(m) || m.includes("<html")) {
@@ -102,6 +127,11 @@ export function AiSidebar({
     setMessages((prev) => [...prev, { role: "assistant", content: `[Library] ${m}` }]);
   }, []);
 
+  const isStaleSessionError = (err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    return /session not found/i.test(msg);
+  };
+
   const send = async () => {
     const q = input.trim();
     if (!q || busy) return;
@@ -109,10 +139,25 @@ export function AiSidebar({
     setBusy(true);
     setMessages((m) => [...m, { role: "user", content: q }]);
     try {
-      const sid = await ensureSession();
-      const res = useRag
-        ? await chatRag({ message: q, session_id: sid, use_rag: true, model })
-        : await chatGeneral({ message: q, session_id: sid, model });
+      const postChat = (sid: string) =>
+        useRag
+          ? chatRag({ message: q, session_id: sid, use_rag: true, model })
+          : chatGeneral({ message: q, session_id: sid, model });
+
+      let sid = await ensureSession();
+      let res: LoominResponse;
+      try {
+        res = await postChat(sid);
+      } catch (e) {
+        // localStorage often keeps a session UUID after DB reset (e.g. docker volume wiped).
+        if (!isStaleSessionError(e)) throw e;
+        setSessionId(null);
+        localStorage.removeItem("loomin_session");
+        const fresh = await newChatSession();
+        setSessionId(fresh.id);
+        localStorage.setItem("loomin_session", fresh.id);
+        res = await postChat(fresh.id);
+      }
       if (res.session_id) {
         setSessionId(res.session_id);
         localStorage.setItem("loomin_session", res.session_id);
@@ -130,7 +175,7 @@ export function AiSidebar({
     } catch (e) {
       setMessages((m) => [
         ...m,
-        { role: "assistant", content: e instanceof Error ? e.message : "Request failed" },
+        { role: "assistant", content: formatApiErrorMessage(e) || "Request failed" },
       ]);
     } finally {
       setBusy(false);
@@ -171,94 +216,132 @@ export function AiSidebar({
       )}
 
       {tab === "assistant" && (
-        <>
-          <section className={styles.controls}>
-            <label className={styles.label}>
-              Model
-              <select value={model} onChange={(e) => onModelChange(e.target.value)}>
+        <div className={styles.assistantMain}>
+          <div className={styles.compactStrip} aria-label="Assistant controls">
+            <div className={styles.compactRow1}>
+              <button type="button" className={styles.compactNewChat} onClick={startNewChat}>
+                New chat
+              </button>
+              <select
+                className={styles.modelSelect}
+                value={model}
+                onChange={(e) => onModelChange(e.target.value)}
+                aria-label="Ollama model"
+              >
                 {(models.length ? models : ["qwen2.5:0.5b", "tinyllama:latest"]).map((x) => (
                   <option key={x} value={x}>
                     {x}
                   </option>
                 ))}
               </select>
-            </label>
-            <label className={styles.toggle}>
-              <input
-                type="checkbox"
-                checked={useRag}
-                onChange={(e) => onUseRagChange(e.target.checked)}
-              />
-              <span>Document-aware (RAG)</span>
-            </label>
-          </section>
-
-          {useRag && (
-            <div className={styles.ragHint}>
-              Answers should follow retrieved snippets; use citations to verify. Empty library → upload in
-              Library first.
+              <label className={styles.ragMini}>
+                <input
+                  type="checkbox"
+                  checked={useRag}
+                  onChange={(e) => onUseRagChange(e.target.checked)}
+                />
+                RAG
+              </label>
             </div>
-          )}
-
-          <div className={styles.meter}>
-            <div className={styles.meterLabel}>
-              <span>Context window (estimate)</span>
-              <span>{contextUsagePercent != null ? `${contextUsagePercent}%` : "—"}</span>
-            </div>
-            <div className={styles.meterTrack}>
-              <div
-                className={styles.meterFill}
-                style={{
-                  width: `${Math.min(100, contextUsagePercent ?? 0)}%`,
-                  background:
-                    (contextUsagePercent ?? 0) > 85 ? "var(--danger)" : "var(--accent-dim)",
-                }}
-              />
+            <div className={styles.compactRow2}>
+              <div className={styles.meterThin}>
+                <div
+                  className={styles.meterThinFill}
+                  style={{
+                    width: `${Math.min(100, contextUsagePercent ?? 0)}%`,
+                    background:
+                      (contextUsagePercent ?? 0) > 85 ? "var(--danger)" : "var(--accent-dim)",
+                  }}
+                />
+              </div>
+              <span className={styles.ctxPct} title="Estimated context window use">
+                {contextUsagePercent != null ? `${contextUsagePercent}%` : "—"}
+              </span>
             </div>
           </div>
+          {useRag && (
+            <p className={styles.inlineHint}>
+              Answers use <strong>Library</strong> uploads only · add files under the Library tab · tap a source to
+              preview text
+            </p>
+          )}
 
-          <div className={styles.chat}>
-            {messages.map((msg, i) => (
-              <div key={i} className={msg.role === "user" ? styles.user : styles.bot}>
-                <div className={styles.role}>{msg.role === "user" ? "You" : "Assistant"}</div>
-                <div className={styles.bubbleText}>{msg.content}</div>
-                {msg.citations && msg.citations.length > 0 && (
-                  <ul className={styles.cites}>
-                    {msg.citations.map((c, j) => (
-                      <li key={j}>
-                        <button
-                          type="button"
-                          className="cite-link"
-                          style={{
-                            background: "none",
-                            border: "none",
-                            padding: 0,
-                            textAlign: "left",
-                            font: "inherit",
-                          }}
-                          onClick={() => setActiveCite(c)}
-                        >
-                          {c.file} · {c.chunk_id}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {msg.metrics && (
-                  <div className={styles.meta}>
-                    {msg.metrics.retrieval_time_ms != null
-                      ? `retrieve ${msg.metrics.retrieval_time_ms} ms · `
-                      : ""}
-                    {msg.metrics.llm_latency_ms != null ? `llm ${msg.metrics.llm_latency_ms} ms · ` : ""}
-                    {msg.metrics.generation_speed_tps != null && msg.metrics.generation_speed_tps > 0
-                      ? `${msg.metrics.generation_speed_tps.toFixed(1)} tok/s · `
-                      : ""}
-                    <span title={msg.metrics.request_id}>id {msg.metrics.request_id?.slice(0, 8)}</span>
-                  </div>
-                )}
-              </div>
-            ))}
-            <div ref={endRef} />
+          <div className={styles.chatSection}>
+            <div className={styles.chatSectionHead}>
+              <span className={styles.chatSectionTitle}>Conversation</span>
+              {messages.length > 0 && (
+                <span className={styles.chatSectionMeta}>{messages.length} messages</span>
+              )}
+            </div>
+            <div className={styles.chat}>
+              {messages.length === 0 && (
+                <p className={styles.emptyChat}>
+                  No messages yet. Type a question below — with RAG on, answers cite your uploaded documents.
+                </p>
+              )}
+              {messages.map((msg, i) => {
+                const libraryNote = msg.role === "assistant" && msg.content.startsWith("[Library]");
+                if (msg.role === "user") {
+                  return (
+                    <article key={i} className={`${styles.msgCard} ${styles.msgUser}`}>
+                      <div className={styles.msgCardHead}>
+                        <span className={styles.roleLabel}>You</span>
+                      </div>
+                      <p className={styles.userText}>{msg.content}</p>
+                    </article>
+                  );
+                }
+                if (libraryNote) {
+                  return (
+                    <article key={i} className={`${styles.msgCard} ${styles.msgAssistant}`}>
+                      <div className={styles.msgCardHead}>
+                        <span className={styles.roleLabel}>Library</span>
+                      </div>
+                      <p className={styles.assistantAnswer}>{msg.content.replace(/^\[Library\]\s*/, "")}</p>
+                    </article>
+                  );
+                }
+                return (
+                  <article key={i} className={`${styles.msgCard} ${styles.msgAssistant}`}>
+                    <div className={styles.msgCardHead}>
+                      <span className={styles.roleLabel}>Assistant</span>
+                    </div>
+                    <p className={styles.assistantAnswer}>{msg.content}</p>
+                    {msg.citations && msg.citations.length > 0 && (
+                      <div className={styles.sourcesSection}>
+                        <span className={styles.sourceKicker}>Sources</span>
+                        <ul className={styles.citeList}>
+                          {msg.citations.map((c, j) => (
+                            <li key={j}>
+                              <button
+                                type="button"
+                                className={styles.citeBtn}
+                                title={`${c.file} — ${c.chunk_id}`}
+                                onClick={() => setActiveCite(c)}
+                              >
+                                {citationLine(c, j)}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {msg.metrics && (
+                      <div className={styles.timingInline}>
+                        {formatTimingLine(msg.metrics)}
+                        {msg.metrics.request_id ? (
+                          <>
+                            {" "}
+                            · id <code title={msg.metrics.request_id}>{msg.metrics.request_id.slice(0, 8)}</code>
+                          </>
+                        ) : null}
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+              <div ref={endRef} />
+            </div>
           </div>
 
           <div className={styles.compose}>
@@ -276,10 +359,12 @@ export function AiSidebar({
                 </span>
               </div>
             )}
-            <textarea
+            <label className={styles.composeLabel}>
+              {useRag ? "Ask your documents" : "Message"}
+              <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={useRag ? "Ask about your library (RAG)…" : "General question…"}
+              placeholder={useRag ? "e.g. What is the Dream Jar made of?" : "Type a question…"}
               rows={3}
               disabled={busy}
               onKeyDown={(e) => {
@@ -289,15 +374,20 @@ export function AiSidebar({
                 }
               }}
             />
+            </label>
             <button type="button" className={busy ? `${styles.sendBtn} ${styles.sendBusy}` : styles.sendBtn} disabled={busy} onClick={() => void send()}>
               {busy ? `Working… ${busyElapsedS}s` : "Send"}
             </button>
             <p className={styles.composeHint}>Tip: Ctrl+Enter or ⌘+Enter to send</p>
           </div>
-        </>
+        </div>
       )}
 
-      {tab === "library" && <FilesPanel onToast={onLibraryToast} />}
+      {tab === "library" && (
+        <div className={styles.libraryMain}>
+          <FilesPanel onToast={onLibraryToast} />
+        </div>
+      )}
 
       {activeCite && (
         <div className={styles.citeModal} role="dialog">

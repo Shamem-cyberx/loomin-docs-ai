@@ -31,7 +31,7 @@ msg = "Who is Luna and what is her role? Answer in 2 short sentences using only 
 
 for n in (1, 2):
     body = json.dumps({
-        "message": msg if n == 1 else "Again: one sentence — who is Luna?",
+        "message": msg if n == 1 else "Again: one sentence â€” who is Luna?",
         "session_id": sid,
         "use_rag": True,
         "model": "llama3:latest",

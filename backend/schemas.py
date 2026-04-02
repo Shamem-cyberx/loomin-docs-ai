@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class Citation(BaseModel):
@@ -29,6 +29,16 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = None
     use_rag: bool = True
     model: Optional[str] = None
+
+    @field_validator("session_id", mode="before")
+    @classmethod
+    def normalize_session_id(cls, v: object) -> Optional[str]:
+        if v is None:
+            return None
+        if isinstance(v, str):
+            s = v.strip()
+            return s if s else None
+        return None
 
 
 class EditRequest(BaseModel):

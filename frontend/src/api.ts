@@ -13,6 +13,25 @@ export type LoominResponse = {
 
 const jsonHeaders = { "Content-Type": "application/json" };
 
+/** Turn fetch error bodies like {"detail":"..."} into readable text for the UI. */
+export function formatApiErrorMessage(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  const m = err.message.trim();
+  if (m.startsWith("{") && m.includes("detail")) {
+    try {
+      const j = JSON.parse(m) as { detail?: unknown };
+      if (typeof j.detail === "string") return j.detail;
+      if (Array.isArray(j.detail) && j.detail.length && typeof j.detail[0] === "object") {
+        const parts = (j.detail as { msg?: string }[]).map((x) => x.msg).filter(Boolean);
+        if (parts.length) return parts.join("; ");
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+  return m;
+}
+
 export async function healthCheck(): Promise<boolean> {
   try {
     const r = await fetch("/health", { method: "GET" });

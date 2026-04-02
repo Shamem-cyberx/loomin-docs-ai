@@ -1,14 +1,15 @@
 :root {
   color-scheme: dark;
-  --bg: #0c0e14;
-  --bg-elevated: #121620;
-  --bg-card: #161c28;
-  --border: rgba(148, 163, 184, 0.12);
-  --border-strong: rgba(148, 163, 184, 0.22);
-  --text: #f1f5f9;
-  --muted: #94a3b8;
+  --bg: #0a0d12;
+  --bg-elevated: #151b26;
+  --bg-card: #1a2230;
+  --border: rgba(203, 213, 225, 0.1);
+  --border-strong: rgba(203, 213, 225, 0.2);
+  --text: #f8fafc;
+  --muted: #b6c4d4;
+  --muted-dim: #8fa3b8;
   --accent: #5eead4;
-  --accent-muted: rgba(94, 234, 212, 0.15);
+  --accent-muted: rgba(94, 234, 212, 0.18);
   --accent-dim: #2dd4bf;
   --danger: #fb7185;
   --ok: #4ade80;
