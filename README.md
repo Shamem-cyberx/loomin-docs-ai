@@ -98,6 +98,8 @@ WSL credential / Buildx issues are covered in **[WSL: “error getting credentia
 
 ## For interviewers & evaluators
 
+**To run this assessment locally on your machine** (Docker + browser on **localhost**): start with **[How to run (Docker)](#how-to-run-docker)** above — clone, **`cp env.example .env`**, build/start (**`docker compose`** or **`bash scripts/compose-wsl.sh`** on WSL with a Windows drive), **`curl`** health, then open **http://localhost/** or **http://127.0.0.1/**. The rest of this section maps rubric paths (A / B / C), safety, and troubleshooting.
+
 This repo matches **`project-assesment.md`**: a **real-time collaborative editor** (React) with an **AI sidebar**—RAG over uploaded files, chat, Summarize/Improve on selection, **Ollama** for local inference, SQLite persistence, PII masking hooks, and latency metadata. The **air-gap story** is implemented as **scripts + Compose + manifest**; heavy binaries (Docker RPMs, `docker save` tarballs) are **assembled offline** per **`deploy/bootstrap/PACKAGE_MANIFEST.md`** and are usually **not** stored in Git.
 
 ### Pick a path (read this first)
