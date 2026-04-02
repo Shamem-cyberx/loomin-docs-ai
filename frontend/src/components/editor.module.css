@@ -1,0 +1,143 @@
+.wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 1.35rem 1.5rem 2.5rem;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.collabBadge {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin: -0.25rem auto 0.75rem;
+  max-width: 52rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+  background: rgba(94, 234, 212, 0.06);
+  width: fit-content;
+}
+
+.prose .collaboration-cursor__caret {
+  border-left: 2px solid var(--accent-dim);
+  margin-left: -1px;
+  margin-right: -1px;
+  pointer-events: none;
+  position: relative;
+  word-break: normal;
+}
+
+.prose .collaboration-cursor__label {
+  border-radius: 4px;
+  color: #0c0e14;
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 600;
+  left: -1px;
+  line-height: normal;
+  padding: 0.12rem 0.4rem;
+  position: absolute;
+  top: -1.35em;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.prose {
+  outline: none;
+  min-height: 58vh;
+  font-family: var(--font-serif);
+  font-size: 1.0625rem;
+  line-height: 1.68;
+  max-width: 52rem;
+  margin: 0 auto;
+  color: #e8edf4;
+}
+
+.prose :is(h1, h2, h3) {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-top: 1.35em;
+  color: var(--text);
+}
+
+.prose p {
+  margin: 0.7em 0;
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 1.4rem;
+}
+
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: rgba(94, 234, 212, 0.12);
+  padding: 0.12em 0.4em;
+  border-radius: 4px;
+}
+
+.prose pre {
+  background: #080a10;
+  padding: 1rem 1.1rem;
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  border: 1px solid var(--border);
+}
+
+.prose blockquote {
+  border-left: 3px solid var(--accent-dim);
+  margin: 1em 0;
+  padding-left: 1rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.bubble {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.4rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+}
+
+.bubble button {
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.bubble button:hover:not(:disabled) {
+  border-color: var(--accent-dim);
+  color: var(--accent);
+}
+
+.bubble button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.loading {
+  padding: 2.5rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.prose p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--muted);
+  pointer-events: none;
+  height: 0;
+  opacity: 0.85;
+}

@@ -1,0 +1,13 @@
+node_modules/
+dist/
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.rag_test_data/
+*.tar
+deploy/ollama/models/
+deploy/ollama/id_ed25519
+deploy/ollama/id_ed25519.pub
+!deploy/ollama/README.md
+.pytest_cache/

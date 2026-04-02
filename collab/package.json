@@ -1,0 +1,9 @@
+{
+  "name": "loomin-collab",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "dependencies": {
+    "@hocuspocus/server": "^2.13.5"
+  }
+}

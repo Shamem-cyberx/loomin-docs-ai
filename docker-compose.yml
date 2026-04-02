@@ -1,0 +1,83 @@
+# Ollama is behind profile "bundle" so Windows dev can skip the ~2GB image pull when using
+# host Ollama (.env: OLLAMA_BASE_URL=http://host.docker.internal:11434). Air-gap / RHEL: run
+#   COMPOSE_PROFILES=bundle docker compose up -d
+# or use ./setup.sh (sets bundle by default).
+services:
+  collab:
+    build:
+      context: ./collab
+      dockerfile: Dockerfile
+    image: loomin-docs-collab:latest
+    container_name: loomin-collab
+    ports:
+      - "1234:1234"
+    restart: unless-stopped
+
+  ollama:
+    profiles:
+      - bundle
+    image: ollama/ollama:latest
+    container_name: loomin-ollama
+    ports:
+      - "11434:11434"
+    # More threads usually help CPU inference (tune to your core count; 0 = Ollama default)
+    environment:
+      OLLAMA_NUM_THREAD: "8"
+    volumes:
+      # Air-gap: populate ./deploy/ollama from a machine that ran `ollama pull llama3` etc.
+      - ./deploy/ollama:/root/.ollama
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: loomin-docs-backend:latest
+    container_name: loomin-backend
+    # Connect to host Ollama (Windows/Mac Docker): copy env.example → .env and set OLLAMA_BASE_URL.
+    # Air-gapped Linux: omit .env — uses bundled ollama service and preload qwen2.5:0.5b (or your tag) into ./deploy/ollama.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      DATA_DIR: /data
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      DEFAULT_OLLAMA_MODEL: ${DEFAULT_OLLAMA_MODEL:-qwen2.5:0.5b}
+      CORS_ORIGINS: http://localhost,http://localhost:80,http://127.0.0.1,http://127.0.0.1:80
+      # Preload MiniLM in RAM after API starts (faster first RAG query; uses ~100MB extra)
+      WARM_EMBEDDINGS_ON_STARTUP: "true"
+      # Preload default LLM in Ollama (~4GB VRAM/RAM) so first chat skips model load
+      WARM_OLLAMA_ON_STARTUP: "false"
+      # Keep model resident between requests (big win after first load)
+      OLLAMA_KEEP_ALIVE: "30m"
+      RAG_TOP_K: "4"
+      RAG_PROMPT_MAX_CHARS_PER_CHUNK: "2200"
+      # Cap generation length / context for snappier replies on CPU (tune via env)
+      # Lower = faster replies for short RAG answers (raise for long essays)
+      OLLAMA_NUM_PREDICT: "256"
+      OLLAMA_NUM_CTX: "2048"
+      OLLAMA_REQUEST_TIMEOUT_S: "1800"
+      # Hybrid RAG: BM25 + dense RRF; set RAG_RERANK_ENABLED true for best accuracy (needs cross-encoder model in air-gap).
+      RAG_HYBRID_ENABLED: "true"
+      RAG_RERANK_ENABLED: "false"
+    volumes:
+      - loomin_data:/data
+    # No depends_on: ollama — ollama is optional (profile "bundle"). Host Ollama needs no container.
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: loomin-docs-frontend:latest
+    container_name: loomin-frontend
+    depends_on:
+      - backend
+      - collab
+    ports:
+      - "80:80"
+    restart: unless-stopped
+
+volumes:
+  loomin_data:

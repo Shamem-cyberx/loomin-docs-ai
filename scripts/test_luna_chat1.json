@@ -1,0 +1,6 @@
+{
+  "message": "Who is Luna and what is her role in the story? Answer in 2 short sentences using only the document.",
+  "session_id": "54df7f9f-7cc4-4cb1-9765-96b1cd62ebbd",
+  "use_rag": true,
+  "model": "llama3:latest"
+}

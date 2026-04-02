@@ -1,0 +1,7 @@
+**/node_modules
+**/__pycache__
+**/.git
+**/.venv
+**/dist
+deploy/ollama/**/*.pt
+*.tar

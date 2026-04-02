@@ -1,0 +1,10 @@
+LOOMIN-DOCS INTERNAL BRIEF
+==========================
+
+Project codename: LOOMIN-7
+Region: Arctic research corridor
+Lead: Dr. Example (redacted for sample)
+
+The Loomin project consolidates offline document workflows. All deployments must remain air-gapped.
+
+Key requirement: answers in production must cite only uploaded corpora, not parametric memory.

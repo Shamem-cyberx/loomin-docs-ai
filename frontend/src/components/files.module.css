@@ -1,0 +1,123 @@
+.panel {
+  padding: 0.85rem 1.1rem 1.1rem;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.75rem;
+  background: rgba(148, 163, 184, 0.06);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.upload {
+  display: inline-block;
+  position: relative;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 1.1rem;
+  cursor: pointer;
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px dashed rgba(45, 212, 191, 0.4);
+  transition: background 0.15s ease;
+}
+
+.upload:hover {
+  background: rgba(94, 234, 212, 0.08);
+}
+
+.upload input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.row {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.75rem;
+  background: var(--bg-elevated);
+  transition: border-color 0.15s ease;
+}
+
+.row:hover {
+  border-color: rgba(148, 163, 184, 0.22);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.75rem;
+  align-items: baseline;
+  margin-bottom: 0.5rem;
+}
+
+.fname {
+  font-weight: 600;
+  font-size: 0.875rem;
+  word-break: break-all;
+  color: var(--text);
+}
+
+.status {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.chunks {
+  font-size: 0.7rem;
+  color: var(--accent-dim);
+}
+
+.actions {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.actions button {
+  font-size: 0.74rem;
+  padding: 0.32rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.actions button:hover:not(:disabled) {
+  border-color: var(--accent-dim);
+  color: var(--accent);
+}
+
+.actions button:disabled {
+  opacity: 0.5;
+}
+
+.danger {
+  border-color: rgba(251, 113, 133, 0.4) !important;
+  color: var(--danger) !important;
+}
